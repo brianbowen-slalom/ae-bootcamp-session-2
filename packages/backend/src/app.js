@@ -1,7 +1,19 @@
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
-const Database = require('better-sqlite3');
+const {
+  initializeDatabase,
+  seedDatabase,
+  getAllItems,
+  createItem,
+  deleteItem,
+  getItemById,
+} = require('./db');
+const {
+  HTTP_STATUS,
+  ERROR_MESSAGES,
+  SUCCESS_MESSAGES,
+} = require('./constants');
 
 // Initialize express app
 const app = express();
@@ -11,88 +23,91 @@ app.use(cors());
 app.use(express.json());
 app.use(morgan('dev'));
 
-// Initialize in-memory SQLite database
-const db = new Database(':memory:');
+// Initialize database
+const db = initializeDatabase();
+seedDatabase(db);
 
-// Create tables
-db.exec(`
-  CREATE TABLE IF NOT EXISTS items (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  )
-`);
-
-// Insert some initial data
-const initialItems = ['Item 1', 'Item 2', 'Item 3'];
-const insertStmt = db.prepare('INSERT INTO items (name) VALUES (?)');
-
-initialItems.forEach(item => {
-  insertStmt.run(item);
-});
-
-console.log('In-memory database initialized with sample data');
-
-// Health check endpoint
+/**
+ * Health check endpoint
+ */
 app.get('/', (req, res) => {
-  res.status(200).json({ status: 'ok', message: 'Backend server is running' });
+  res.status(HTTP_STATUS.OK).json({
+    status: 'ok',
+    message: 'Backend server is running',
+  });
 });
 
-// API Routes
+/**
+ * GET /api/items
+ * Retrieve all items from the database
+ */
 app.get('/api/items', (req, res) => {
   try {
-    const items = db.prepare('SELECT * FROM items ORDER BY created_at DESC').all();
+    const items = getAllItems(db);
     res.json(items);
   } catch (error) {
     console.error('Error fetching items:', error);
-    res.status(500).json({ error: 'Failed to fetch items' });
+    res
+      .status(HTTP_STATUS.SERVER_ERROR)
+      .json({ error: ERROR_MESSAGES.FAILED_FETCH_ITEMS });
   }
 });
 
+/**
+ * POST /api/items
+ * Create a new item with validation
+ */
 app.post('/api/items', (req, res) => {
   try {
     const { name } = req.body;
 
     if (!name || typeof name !== 'string' || name.trim() === '') {
-      return res.status(400).json({ error: 'Item name is required' });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        error: ERROR_MESSAGES.ITEM_NAME_REQUIRED,
+      });
     }
 
-    const result = insertStmt.run(name);
-    const id = result.lastInsertRowid;
-
-    const newItem = db.prepare('SELECT * FROM items WHERE id = ?').get(id);
-    res.status(201).json(newItem);
+    const newItem = createItem(db, name);
+    res.status(HTTP_STATUS.CREATED).json(newItem);
   } catch (error) {
     console.error('Error creating item:', error);
-    res.status(500).json({ error: 'Failed to create item' });
+    res.status(HTTP_STATUS.SERVER_ERROR).json({
+      error: ERROR_MESSAGES.FAILED_CREATE_ITEM,
+    });
   }
 });
 
+/**
+ * DELETE /api/items/:id
+ * Delete an item by ID with validation
+ */
 app.delete('/api/items/:id', (req, res) => {
   try {
     const { id } = req.params;
 
     if (!id || isNaN(parseInt(id))) {
-      return res.status(400).json({ error: 'Valid item ID is required' });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        error: ERROR_MESSAGES.VALID_ID_REQUIRED,
+      });
     }
 
-    const existingItem = db.prepare('SELECT * FROM items WHERE id = ?').get(id);
-    if (!existingItem) {
-      return res.status(404).json({ error: 'Item not found' });
+    if (!getItemById(db, id)) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({
+        error: ERROR_MESSAGES.ITEM_NOT_FOUND,
+      });
     }
 
-    const deleteStmt = db.prepare('DELETE FROM items WHERE id = ?');
-    const result = deleteStmt.run(id);
-
-    if (result.changes > 0) {
-      res.json({ message: 'Item deleted successfully', id: parseInt(id) });
-    } else {
-      res.status(404).json({ error: 'Item not found' });
-    }
+    deleteItem(db, id);
+    res.json({
+      message: SUCCESS_MESSAGES.ITEM_DELETED,
+      id: parseInt(id),
+    });
   } catch (error) {
     console.error('Error deleting item:', error);
-    res.status(500).json({ error: 'Failed to delete item' });
+    res.status(HTTP_STATUS.SERVER_ERROR).json({
+      error: ERROR_MESSAGES.FAILED_DELETE_ITEM,
+    });
   }
 });
 
-module.exports = { app, db, insertStmt };
+module.exports = { app, db };
