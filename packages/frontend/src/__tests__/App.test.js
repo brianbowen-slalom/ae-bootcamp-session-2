@@ -97,6 +97,9 @@ describe('App Component', () => {
     await waitFor(() => {
       expect(screen.getByText('New Test Item')).toBeInTheDocument();
     });
+
+    // Input should reset after successful submit
+    expect(input).toHaveValue('');
   });
 
   test('deletes an existing item', async () => {
@@ -129,6 +132,28 @@ describe('App Component', () => {
     // Wait for error message
     await waitFor(() => {
       expect(screen.getByText(/Failed to fetch/)).toBeInTheDocument();
+    });
+  });
+
+  test('dismisses API error message when user clicks dismiss', async () => {
+    const user = userEvent.setup();
+
+    server.use(
+      rest.get('/api/items', (req, res, ctx) => {
+        return res(ctx.status(500));
+      })
+    );
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Failed to fetch/)).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Dismiss' }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Failed to fetch/)).not.toBeInTheDocument();
     });
   });
 

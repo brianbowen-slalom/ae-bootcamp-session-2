@@ -19,12 +19,21 @@ class TodoPage {
     await this.addButton.click();
   }
 
+  async submitEmptyItem() {
+    await this.input.fill('   ');
+    await this.addButton.click();
+  }
+
   itemText(name) {
     return this.page.getByText(name);
   }
 
   itemRow(name) {
     return this.page.locator('li', { hasText: name });
+  }
+
+  allRows() {
+    return this.page.locator('li');
   }
 
   async deleteItem(name) {

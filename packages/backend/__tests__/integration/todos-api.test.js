@@ -67,6 +67,16 @@ describe('TODO API integration tests', () => {
       expect(response.status).toBe(400);
       expect(response.body).toEqual({ error: 'Item name is required' });
     });
+
+    it('returns 400 when name is not a string', async () => {
+      const response = await request(app)
+        .post('/api/items')
+        .send({ name: 123 })
+        .set('Accept', 'application/json');
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: 'Item name is required' });
+    });
   });
 
   describe('DELETE /api/items/:id', () => {

@@ -2,6 +2,18 @@ const { test, expect } = require('@playwright/test');
 const { TodoPage } = require('./pages/TodoPage');
 
 test.describe('TODO workflow', () => {
+  test('does not add an empty item', async ({ page }) => {
+    const todoPage = new TodoPage(page);
+
+    await todoPage.goto();
+    await todoPage.waitForReady();
+
+    const initialCount = await todoPage.allRows().count();
+    await todoPage.submitEmptyItem();
+
+    await expect(todoPage.allRows()).toHaveCount(initialCount);
+  });
+
   test('adds a new item', async ({ page }) => {
     const todoPage = new TodoPage(page);
     const itemName = `E2E item ${Date.now()}`;
