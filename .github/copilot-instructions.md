@@ -12,3 +12,4 @@ The project documentation will be built during the bootcamp sessions.
 - [Functional Requirements](../docs/functional-requirements.md) - Core functional requirements for the TODO app
 - [UI Guidelines](../docs/ui-guidelines.md) - Cyberpunk design theme, color palette, component standards, and accessibility requirements
 - [Testing Guidelines](../docs/testing-guidelines.md) - Unit, integration, and E2E testing standards and quality expectations
+- [Coding Guidelines](../docs/coding-guidelines.md) - Best practices, code style, naming conventions, and SOLID principles
